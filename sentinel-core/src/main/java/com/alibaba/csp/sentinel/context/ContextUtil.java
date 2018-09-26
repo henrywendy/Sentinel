@@ -207,6 +207,16 @@ public class ContextUtil {
     }
 
     /**
+     * Get current size of context entrance node map.
+     *
+     * @return current size of context entrance node map
+     * @since 0.2.0
+     */
+    public static int contextSize() {
+        return contextNameNodeMap.size();
+    }
+
+    /**
      * Get {@link Context} of current thread.
      *
      * @return context of current thread. Null value will be return if current

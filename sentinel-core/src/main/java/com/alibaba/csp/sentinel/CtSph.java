@@ -222,6 +222,16 @@ public class CtSph implements Sph {
     }
 
     /**
+     * Get current size of created slot chains.
+     *
+     * @return size of created slot chains
+     * @since 0.2.0
+     */
+    public static int slotChainSize() {
+        return chainMap.size();
+    }
+
+    /**
      * This class is used for skip context name checking.
      */
     private final static class MyContextUtil extends ContextUtil {

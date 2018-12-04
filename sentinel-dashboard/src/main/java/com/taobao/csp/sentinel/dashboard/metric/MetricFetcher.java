@@ -32,15 +32,6 @@ import java.util.concurrent.ThreadPoolExecutor.DiscardPolicy;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
-import com.alibaba.csp.sentinel.config.SentinelConfig;
-import com.alibaba.csp.sentinel.node.metric.MetricNode;
-import com.alibaba.csp.sentinel.util.StringUtil;
-
-import com.taobao.csp.sentinel.dashboard.datasource.entity.MetricEntity;
-import com.taobao.csp.sentinel.dashboard.discovery.AppManagement;
-import com.taobao.csp.sentinel.dashboard.discovery.MachineInfo;
-import com.taobao.csp.sentinel.dashboard.repository.metric.MetricsRepository;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.concurrent.FutureCallback;
@@ -54,7 +45,17 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
+import com.alibaba.csp.sentinel.config.SentinelConfig;
+import com.alibaba.csp.sentinel.node.metric.MetricNode;
+import com.alibaba.csp.sentinel.util.StringUtil;
+import com.taobao.csp.sentinel.dashboard.datasource.entity.MetricEntity;
+import com.taobao.csp.sentinel.dashboard.discovery.AppManagement;
+import com.taobao.csp.sentinel.dashboard.discovery.MachineInfo;
+import com.taobao.csp.sentinel.dashboard.repository.metric.MetricsRepository;
 
 /**
  * Fetch metric of machines.
@@ -77,6 +78,7 @@ public class MetricFetcher {
     private Map<String, AtomicLong> appLastFetchTime = new ConcurrentHashMap<>();
 
     @Autowired
+    @Qualifier("influxDBMetricsRepository")
     private MetricsRepository<MetricEntity> metricStore;
     @Autowired
     private AppManagement appManagement;

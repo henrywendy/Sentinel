@@ -65,6 +65,9 @@ public class ParamFlowRule extends AbstractRule {
      */
     private Map<Object, Integer> hotItems = new HashMap<Object, Integer>();
 
+    private boolean clusterMode = false;
+    private ParamFlowClusterConfig clusterConfig;
+
     public int getGrade() {
         return grade;
     }
@@ -101,12 +104,37 @@ public class ParamFlowRule extends AbstractRule {
         return this;
     }
 
+    public Integer retrieveExclusiveItemCount(Object value) {
+        if (value == null || hotItems == null) {
+            return null;
+        }
+        return hotItems.get(value);
+    }
+
     Map<Object, Integer> getParsedHotItems() {
         return hotItems;
     }
 
     ParamFlowRule setParsedHotItems(Map<Object, Integer> hotItems) {
         this.hotItems = hotItems;
+        return this;
+    }
+
+    public boolean isClusterMode() {
+        return clusterMode;
+    }
+
+    public ParamFlowRule setClusterMode(boolean clusterMode) {
+        this.clusterMode = clusterMode;
+        return this;
+    }
+
+    public ParamFlowClusterConfig getClusterConfig() {
+        return clusterConfig;
+    }
+
+    public ParamFlowRule setClusterConfig(ParamFlowClusterConfig clusterConfig) {
+        this.clusterConfig = clusterConfig;
         return this;
     }
 
@@ -126,8 +154,11 @@ public class ParamFlowRule extends AbstractRule {
 
         if (grade != rule.grade) { return false; }
         if (Double.compare(rule.count, count) != 0) { return false; }
+        if (clusterMode != rule.clusterMode) { return false; }
         if (paramIdx != null ? !paramIdx.equals(rule.paramIdx) : rule.paramIdx != null) { return false; }
-        return paramFlowItemList != null ? paramFlowItemList.equals(rule.paramFlowItemList) : rule.paramFlowItemList == null;
+        if (paramFlowItemList != null ? !paramFlowItemList.equals(rule.paramFlowItemList)
+            : rule.paramFlowItemList != null) { return false; }
+        return clusterConfig != null ? clusterConfig.equals(rule.clusterConfig) : rule.clusterConfig == null;
     }
 
     @Override
@@ -139,18 +170,20 @@ public class ParamFlowRule extends AbstractRule {
         temp = Double.doubleToLongBits(count);
         result = 31 * result + (int)(temp ^ (temp >>> 32));
         result = 31 * result + (paramFlowItemList != null ? paramFlowItemList.hashCode() : 0);
+        result = 31 * result + (clusterMode ? 1 : 0);
+        result = 31 * result + (clusterConfig != null ? clusterConfig.hashCode() : 0);
         return result;
     }
 
     @Override
     public String toString() {
         return "ParamFlowRule{" +
-            "resource=" + getResource() +
-            ", limitApp=" + getLimitApp() +
-            ", grade=" + grade +
+            "grade=" + grade +
             ", paramIdx=" + paramIdx +
             ", count=" + count +
             ", paramFlowItemList=" + paramFlowItemList +
+            ", clusterMode=" + clusterMode +
+            ", clusterConfig=" + clusterConfig +
             '}';
     }
 }

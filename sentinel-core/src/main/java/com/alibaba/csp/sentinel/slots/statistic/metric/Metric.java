@@ -18,7 +18,7 @@ package com.alibaba.csp.sentinel.slots.statistic.metric;
 import java.util.List;
 
 import com.alibaba.csp.sentinel.node.metric.MetricNode;
-import com.alibaba.csp.sentinel.slots.statistic.base.MetricBucket;
+import com.alibaba.csp.sentinel.slots.statistic.data.MetricBucket;
 
 /**
  * Represents a basic structure recording invocation metrics of protected resources.
@@ -35,6 +35,11 @@ public interface Metric {
      */
     long success();
 
+    /**
+     * Get max success count.
+     *
+     * @return max success count
+     */
     long maxSuccess();
 
     /**
@@ -59,7 +64,7 @@ public interface Metric {
     long pass();
 
     /**
-     * Get total RT.
+     * Get total response time.
      *
      * @return total RT
      */
@@ -72,6 +77,11 @@ public interface Metric {
      */
     long minRt();
 
+    /**
+     * Get aggregated metric nodes of all resources.
+     *
+     * @return metric node list of all resources
+     */
     List<MetricNode> details();
 
     /**

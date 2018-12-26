@@ -7,6 +7,7 @@ import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,8 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ZkClientHelper {
 
+    @Value("zk.address")
     private String connectAddr;
 
+    @Value("zk.timeout")
     private String sessionTimeOut;
 
     private String retryTime = "10";//默认重试10次

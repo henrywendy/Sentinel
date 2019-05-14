@@ -61,7 +61,7 @@ final class FlowRuleChecker {
             return true;
         }
 
-        return rule.getRater().canPass(selectedNode, acquireCount);
+        return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
 
     static Node selectReferenceNode(FlowRule rule, Context context, DefaultNode node) {
@@ -178,6 +178,7 @@ final class FlowRuleChecker {
             case TokenResultStatus.NO_RULE_EXISTS:
             case TokenResultStatus.BAD_REQUEST:
             case TokenResultStatus.FAIL:
+            case TokenResultStatus.TOO_MANY_REQUEST:
                 return fallbackToLocalOrPass(rule, context, node, acquireCount, prioritized);
             case TokenResultStatus.BLOCKED:
             default:

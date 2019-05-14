@@ -40,6 +40,15 @@ public class MetricBucket {
         initMinRt();
     }
 
+    public MetricBucket reset(MetricBucket bucket) {
+        for (MetricEvent event : MetricEvent.values()) {
+            counters[event.ordinal()].reset();
+            counters[event.ordinal()].add(bucket.get(event));
+        }
+        initMinRt();
+        return this;
+    }
+
     private void initMinRt() {
         this.minRt = Constants.TIME_DROP_VALVE;
     }
@@ -70,6 +79,10 @@ public class MetricBucket {
         return get(MetricEvent.PASS);
     }
 
+    public long occupiedPass() {
+        return get(MetricEvent.OCCUPIED_PASS);
+    }
+
     public long block() {
         return get(MetricEvent.BLOCK);
     }
@@ -90,20 +103,24 @@ public class MetricBucket {
         return get(MetricEvent.SUCCESS);
     }
 
-    public void addPass() {
-        add(MetricEvent.PASS, 1);
+    public void addPass(int n) {
+        add(MetricEvent.PASS, n);
     }
 
-    public void addException() {
-        add(MetricEvent.EXCEPTION, 1);
+    public void addOccupiedPass(int n) {
+        add(MetricEvent.OCCUPIED_PASS, n);
     }
 
-    public void addBlock() {
-        add(MetricEvent.BLOCK, 1);
+    public void addException(int n) {
+        add(MetricEvent.EXCEPTION, n);
     }
 
-    public void addSuccess() {
-        add(MetricEvent.SUCCESS, 1);
+    public void addBlock(int n) {
+        add(MetricEvent.BLOCK, n);
+    }
+
+    public void addSuccess(int n) {
+        add(MetricEvent.SUCCESS, n);
     }
 
     public void addRT(long rt) {
@@ -113,5 +130,10 @@ public class MetricBucket {
         if (rt < minRt) {
             minRt = rt;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "p: " + pass() + ", b: " + block() + ", w: " + occupiedPass();
     }
 }

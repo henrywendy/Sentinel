@@ -74,8 +74,11 @@ public class FlowControllerV2 {
     private DynamicRuleProvider<List<FlowRuleEntity>> ruleProvider;
 
     @Autowired
+<<<<<<< HEAD
     //@Qualifier("flowRuleDefaultPublisher")
     @Qualifier("flowRuleZkPublisher")
+=======
+>>>>>>> release-1.6
     private DynamicRulePublisher<List<FlowRuleEntity>> rulePublisher;
 
     @Autowired

@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 package com.alibaba.csp.sentinel.dashboard.controller.v2;
-
 import java.util.Date;
 import java.util.List;
-
-<<<<<<< HEAD:sentinel-dashboard/src/main/java/com/taobao/csp/sentinel/dashboard/view/FlowControllerV2.java
-=======
 import javax.servlet.http.HttpServletRequest;
-
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.AuthUser;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
 import com.alibaba.csp.sentinel.util.StringUtil;
-
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.InMemoryRuleRepositoryAdapter;
 import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleProvider;
 import com.alibaba.csp.sentinel.dashboard.rule.DynamicRulePublisher;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
-
->>>>>>> release-1.6:sentinel-dashboard/src/main/java/com/alibaba/csp/sentinel/dashboard/controller/v2/FlowControllerV2.java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +39,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.alibaba.csp.sentinel.util.StringUtil;
-import com.taobao.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
-import com.taobao.csp.sentinel.dashboard.repository.rule.InMemoryRuleRepositoryAdapter;
-import com.taobao.csp.sentinel.dashboard.rule.DynamicRuleProvider;
-import com.taobao.csp.sentinel.dashboard.rule.DynamicRulePublisher;
 
 /**
  * Flow rule controller (v2).
@@ -74,11 +60,7 @@ public class FlowControllerV2 {
     private DynamicRuleProvider<List<FlowRuleEntity>> ruleProvider;
 
     @Autowired
-<<<<<<< HEAD
-    //@Qualifier("flowRuleDefaultPublisher")
-    @Qualifier("flowRuleZkPublisher")
-=======
->>>>>>> release-1.6
+    @Qualifier("flowRuleDefaultPublisher")
     private DynamicRulePublisher<List<FlowRuleEntity>> rulePublisher;
 
     @Autowired

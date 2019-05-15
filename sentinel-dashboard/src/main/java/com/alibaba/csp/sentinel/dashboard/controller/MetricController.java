@@ -24,30 +24,19 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-<<<<<<< HEAD:sentinel-dashboard/src/main/java/com/taobao/csp/sentinel/dashboard/view/MetricController.java
-=======
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
 import com.alibaba.csp.sentinel.dashboard.repository.metric.MetricsRepository;
->>>>>>> release-1.6:sentinel-dashboard/src/main/java/com/alibaba/csp/sentinel/dashboard/controller/MetricController.java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.alibaba.csp.sentinel.util.StringUtil;
-<<<<<<< HEAD:sentinel-dashboard/src/main/java/com/taobao/csp/sentinel/dashboard/view/MetricController.java
-import com.taobao.csp.sentinel.dashboard.datasource.entity.MetricEntity;
-import com.taobao.csp.sentinel.dashboard.repository.metric.MetricsRepository;
-import com.taobao.csp.sentinel.dashboard.view.vo.MetricVo;
-=======
-
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.MetricEntity;
 import com.alibaba.csp.sentinel.dashboard.domain.vo.MetricVo;
->>>>>>> release-1.6:sentinel-dashboard/src/main/java/com/alibaba/csp/sentinel/dashboard/controller/MetricController.java
 
 /**
  * @author leyou
@@ -61,7 +50,6 @@ public class MetricController {
     private static final long maxQueryIntervalMs = 1000 * 60 * 60;
 
     @Autowired
-    @Qualifier("influxDBMetricsRepository")
     private MetricsRepository<MetricEntity> metricStore;
 
     @ResponseBody

@@ -63,8 +63,8 @@ public class FlowControllerV2 {
     @Autowired
     @Qualifier("flowRuleDefaultProvider")
     private DynamicRuleProvider<List<FlowRuleEntity>> ruleProvider;
+
     @Autowired
-    @Qualifier("flowRuleDefaultPublisher")
     private DynamicRulePublisher<List<FlowRuleEntity>> rulePublisher;
 
     @Autowired

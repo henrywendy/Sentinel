@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.ClusterParamMetricStatistics;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.metric.ClusterParamMetric;
 import com.alibaba.csp.sentinel.cluster.server.ServerConstants;
-import com.alibaba.csp.sentinel.cluster.server.config.ClusterServerConfigManager;
 import com.alibaba.csp.sentinel.cluster.server.connection.ConnectionManager;
 import com.alibaba.csp.sentinel.cluster.server.util.ClusterRuleUtil;
 import com.alibaba.csp.sentinel.log.RecordLog;
@@ -33,6 +32,7 @@ import com.alibaba.csp.sentinel.property.DynamicSentinelProperty;
 import com.alibaba.csp.sentinel.property.PropertyListener;
 import com.alibaba.csp.sentinel.property.SentinelProperty;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
+import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowClusterConfig;
 import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRuleUtil;
 import com.alibaba.csp.sentinel.util.AssertUtil;
@@ -100,6 +100,10 @@ public final class ClusterParamFlowRuleManager {
         ClusterParamFlowRuleManager.propertySupplier = propertySupplier;
     }
 
+    public static String getNamespace(long flowId) {
+        return FLOW_NAMESPACE_MAP.get(flowId);
+    }
+
     /**
      * Listen to the {@link SentinelProperty} for cluster {@link ParamFlowRule}s.
      * The property is the source of cluster {@link ParamFlowRule}s for a specific namespace.
@@ -123,7 +127,7 @@ public final class ClusterParamFlowRuleManager {
         }
         synchronized (UPDATE_LOCK) {
             RecordLog.info("[ClusterParamFlowRuleManager] Registering new property to cluster param rule manager"
-                + " for namespace <{0}>", namespace);
+                + " for namespace <{}>", namespace);
             registerPropertyInternal(namespace, property);
         }
     }
@@ -163,7 +167,7 @@ public final class ClusterParamFlowRuleManager {
                 PROPERTY_MAP.remove(namespace);
             }
             RecordLog.info("[ClusterParamFlowRuleManager] Removing property from cluster flow rule manager"
-                + " for namespace <{0}>", namespace);
+                + " for namespace <{}>", namespace);
         }
     }
 
@@ -216,6 +220,17 @@ public final class ClusterParamFlowRuleManager {
             return null;
         }
         return PARAM_RULES.get(id);
+    }
+
+    public static Set<Long> getFlowIdSet(String namespace) {
+        if (StringUtil.isEmpty(namespace)) {
+            return new HashSet<>();
+        }
+        Set<Long> set = NAMESPACE_FLOW_ID_MAP.get(namespace);
+        if (set == null) {
+            return new HashSet<>();
+        }
+        return new HashSet<>(set);
     }
 
     public static List<ParamFlowRule> getAllParamRules() {
@@ -290,14 +305,14 @@ public final class ClusterParamFlowRuleManager {
         @Override
         public void configLoad(List<ParamFlowRule> conf) {
             applyClusterParamRules(conf, namespace);
-            RecordLog.info("[ClusterParamFlowRuleManager] Cluster parameter rules loaded for namespace <{0}>: {1}",
+            RecordLog.info("[ClusterParamFlowRuleManager] Cluster parameter rules loaded for namespace <{}>: {}",
                 namespace, PARAM_RULES);
         }
 
         @Override
         public void configUpdate(List<ParamFlowRule> conf) {
             applyClusterParamRules(conf, namespace);
-            RecordLog.info("[ClusterParamFlowRuleManager] Cluster parameter rules received for namespace <{0}>: {1}",
+            RecordLog.info("[ClusterParamFlowRuleManager] Cluster parameter rules received for namespace <{}>: {}",
                 namespace, PARAM_RULES);
         }
     }
@@ -327,8 +342,9 @@ public final class ClusterParamFlowRuleManager {
 
             ParamFlowRuleUtil.fillExceptionFlowItems(rule);
 
+            ParamFlowClusterConfig clusterConfig = rule.getClusterConfig();
             // Flow id should not be null after filtered.
-            Long flowId = rule.getClusterConfig().getFlowId();
+            Long flowId = clusterConfig.getFlowId();
             if (flowId == null) {
                 continue;
             }
@@ -338,8 +354,7 @@ public final class ClusterParamFlowRuleManager {
 
             // Prepare cluster parameter metric from valid rule ID.
             ClusterParamMetricStatistics.putMetricIfAbsent(flowId,
-                new ClusterParamMetric(ClusterServerConfigManager.getSampleCount(),
-                    ClusterServerConfigManager.getIntervalMs()));
+                new ClusterParamMetric(clusterConfig.getSampleCount(), clusterConfig.getWindowIntervalMs()));
         }
 
         // Cleanup unused cluster parameter metrics.

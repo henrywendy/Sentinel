@@ -15,13 +15,6 @@
  */
 package com.alibaba.csp.sentinel.slots.block.flow;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.slots.block.ClusterRuleConstant;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
@@ -32,6 +25,10 @@ import com.alibaba.csp.sentinel.slots.block.flow.controller.WarmUpRateLimiterCon
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Eric Zhao
@@ -52,8 +49,8 @@ public final class FlowRuleUtil {
     /**
      * Build the flow rule map from raw list of flow rules, grouping by resource name.
      *
-     * @param list          raw list of flow rules
-     * @param filter        rule filter
+     * @param list   raw list of flow rules
+     * @param filter rule filter
      * @return constructed new flow rule map; empty map if list is null or empty, or no wanted rules
      */
     public static Map<String, List<FlowRule>> buildFlowRuleMap(List<FlowRule> list, Predicate<FlowRule> filter) {
@@ -63,9 +60,9 @@ public final class FlowRuleUtil {
     /**
      * Build the flow rule map from raw list of flow rules, grouping by resource name.
      *
-     * @param list          raw list of flow rules
-     * @param filter        rule filter
-     * @param shouldSort    whether the rules should be sorted
+     * @param list       raw list of flow rules
+     * @param filter     rule filter
+     * @param shouldSort whether the rules should be sorted
      * @return constructed new flow rule map; empty map if list is null or empty, or no wanted rules
      */
     public static Map<String, List<FlowRule>> buildFlowRuleMap(List<FlowRule> list, Predicate<FlowRule> filter,
@@ -85,10 +82,11 @@ public final class FlowRuleUtil {
      */
     public static <K> Map<K, List<FlowRule>> buildFlowRuleMap(List<FlowRule> list, Function<FlowRule, K> groupFunction,
                                                               Predicate<FlowRule> filter, boolean shouldSort) {
-        Map<K, List<FlowRule>> newRuleMap = new ConcurrentHashMap<K, List<FlowRule>>();
+        Map<K, List<FlowRule>> newRuleMap = new ConcurrentHashMap<>();
         if (list == null || list.isEmpty()) {
             return newRuleMap;
         }
+        Map<K, Set<FlowRule>> tmpMap = new ConcurrentHashMap<>();
 
         for (FlowRule rule : list) {
             if (!isValidRule(rule)) {
@@ -101,7 +99,6 @@ public final class FlowRuleUtil {
             if (StringUtil.isBlank(rule.getLimitApp())) {
                 rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
             }
-
             TrafficShapingController rater = generateRater(rule);
             rule.setRater(rater);
 
@@ -109,22 +106,24 @@ public final class FlowRuleUtil {
             if (key == null) {
                 continue;
             }
-            List<FlowRule> flowRules = newRuleMap.get(key);
+            Set<FlowRule> flowRules = tmpMap.get(key);
 
             if (flowRules == null) {
-                flowRules = new ArrayList<FlowRule>();
-                newRuleMap.put(key, flowRules);
+                // Use hash set here to remove duplicate rules.
+                flowRules = new HashSet<>();
+                tmpMap.put(key, flowRules);
             }
 
             flowRules.add(rule);
         }
-
-        if (shouldSort && !newRuleMap.isEmpty()) {
-            Comparator<FlowRule> comparator = new FlowRuleComparator();
-            // Sort the rules.
-            for (List<FlowRule> rules : newRuleMap.values()) {
+        Comparator<FlowRule> comparator = new FlowRuleComparator();
+        for (Entry<K, Set<FlowRule>> entries : tmpMap.entrySet()) {
+            List<FlowRule> rules = new ArrayList<>(entries.getValue());
+            if (shouldSort) {
+                // Sort the rules.
                 Collections.sort(rules, comparator);
             }
+            newRuleMap.put(entries.getKey(), rules);
         }
 
         return newRuleMap;
@@ -135,12 +134,12 @@ public final class FlowRuleUtil {
             switch (rule.getControlBehavior()) {
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP:
                     return new WarmUpController(rule.getCount(), rule.getWarmUpPeriodSec(),
-                        ColdFactorProperty.coldFactor);
+                            ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER:
                     return new RateLimiterController(rule.getMaxQueueingTimeMs(), rule.getCount());
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP_RATE_LIMITER:
                     return new WarmUpRateLimiterController(rule.getCount(), rule.getWarmUpPeriodSec(),
-                        rule.getMaxQueueingTimeMs(), ColdFactorProperty.coldFactor);
+                            rule.getMaxQueueingTimeMs(), ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_DEFAULT:
                 default:
                     // Default mode or unknown mode: default traffic shaping controller (fast-reject).
@@ -167,12 +166,42 @@ public final class FlowRuleUtil {
      */
     public static boolean isValidRule(FlowRule rule) {
         boolean baseValid = rule != null && !StringUtil.isBlank(rule.getResource()) && rule.getCount() >= 0
-            && rule.getGrade() >= 0 && rule.getStrategy() >= 0 && rule.getControlBehavior() >= 0;
+                && rule.getGrade() >= 0 && rule.getStrategy() >= 0 && rule.getControlBehavior() >= 0;
         if (!baseValid) {
             return false;
         }
-        // Check strategy and control (shaping) behavior.
-        return checkClusterField(rule) && checkStrategyField(rule) && checkControlBehaviorField(rule);
+        if (rule.getGrade() == RuleConstant.FLOW_GRADE_QPS) {
+            // Check strategy and control (shaping) behavior.
+            return checkClusterField(rule) && checkStrategyField(rule) && checkControlBehaviorField(rule);
+        } else if (rule.getGrade() == RuleConstant.FLOW_GRADE_THREAD) {
+            return checkClusterConcurrentField(rule);
+        } else {
+            return false;
+        }
+
+    }
+
+    public static boolean checkClusterConcurrentField(/*@NonNull*/ FlowRule rule) {
+        if (!rule.isClusterMode()) {
+            return true;
+        }
+        ClusterFlowConfig clusterConfig = rule.getClusterConfig();
+        if (clusterConfig == null) {
+            return false;
+        }
+        if (clusterConfig.getClientOfflineTime() <= 0 || clusterConfig.getResourceTimeout() <= 0) {
+            return false;
+        }
+
+        if (clusterConfig.getAcquireRefuseStrategy() < 0 || clusterConfig.getResourceTimeoutStrategy() < 0) {
+            return false;
+        }
+
+        if (!validClusterRuleId(clusterConfig.getFlowId())) {
+            return false;
+        }
+
+        return isWindowConfigValid(clusterConfig.getSampleCount(), clusterConfig.getWindowIntervalMs());
     }
 
     private static boolean checkClusterField(/*@NonNull*/ FlowRule rule) {
@@ -186,12 +215,19 @@ public final class FlowRuleUtil {
         if (!validClusterRuleId(clusterConfig.getFlowId())) {
             return false;
         }
-        switch (rule.getStrategy()) {
+        if (!isWindowConfigValid(clusterConfig.getSampleCount(), clusterConfig.getWindowIntervalMs())) {
+            return false;
+        }
+        switch (clusterConfig.getStrategy()) {
             case ClusterRuleConstant.FLOW_CLUSTER_STRATEGY_NORMAL:
                 return true;
             default:
                 return false;
         }
+    }
+
+    public static boolean isWindowConfigValid(int sampleCount, int windowIntervalMs) {
+        return sampleCount > 0 && windowIntervalMs > 0 && windowIntervalMs % sampleCount == 0;
     }
 
     private static boolean checkStrategyField(/*@NonNull*/ FlowRule rule) {
@@ -221,5 +257,6 @@ public final class FlowRuleUtil {
         }
     };
 
-    private FlowRuleUtil() {}
+    private FlowRuleUtil() {
+    }
 }

@@ -19,13 +19,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.alibaba.csp.sentinel.ResourceTypeConstants;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.util.AssertUtil;
 
 /**
  * <p>
  * This class stores summary runtime statistics of the resource, including rt, thread count, qps
- * and so on. Same resource shares the same {@link ClusterNode} globally, no matter in witch
+ * and so on. Same resource shares the same {@link ClusterNode} globally, no matter in which
  * {@link com.alibaba.csp.sentinel.context.Context}.
  * </p>
  * <p>
@@ -42,14 +44,50 @@ import com.alibaba.csp.sentinel.slots.block.BlockException;
  */
 public class ClusterNode extends StatisticNode {
 
+    private final String name;
+    private final int resourceType;
+
+    public ClusterNode(String name) {
+        this(name, ResourceTypeConstants.COMMON);
+    }
+
+    public ClusterNode(String name, int resourceType) {
+        AssertUtil.notEmpty(name, "name cannot be empty");
+        this.name = name;
+        this.resourceType = resourceType;
+    }
+
     /**
-     * The longer the application runs, the more stable this mapping will
-     * become. so we don't concurrent map but a lock. as this lock only happens
+     * <p>The origin map holds the pair: (origin, originNode) for one specific resource.</p>
+     * <p>
+     * The longer the application runs, the more stable this mapping will become.
+     * So we didn't use concurrent map here, but a lock, as this lock only happens
      * at the very beginning while concurrent map will hold the lock all the time.
+     * </p>
      */
-    private Map<String, StatisticNode> originCountMap = new HashMap<String, StatisticNode>();
+    private Map<String, StatisticNode> originCountMap = new HashMap<>();
 
     private final ReentrantLock lock = new ReentrantLock();
+
+    /**
+     * Get resource name of the resource node.
+     *
+     * @return resource name
+     * @since 1.7.0
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Get classification (type) of the resource.
+     *
+     * @return resource type
+     * @since 1.7.0
+     */
+    public int getResourceType() {
+        return resourceType;
+    }
 
     /**
      * <p>Get {@link Node} of the specific origin. Usually the origin is the Service Consumer's app name.</p>
@@ -63,14 +101,13 @@ public class ClusterNode extends StatisticNode {
     public Node getOrCreateOriginNode(String origin) {
         StatisticNode statisticNode = originCountMap.get(origin);
         if (statisticNode == null) {
+            lock.lock();
             try {
-                lock.lock();
                 statisticNode = originCountMap.get(origin);
                 if (statisticNode == null) {
                     // The node is absent, create a new node for the origin.
                     statisticNode = new StatisticNode();
-                    HashMap<String, StatisticNode> newMap = new HashMap<String, StatisticNode>(
-                        originCountMap.size() + 1);
+                    HashMap<String, StatisticNode> newMap = new HashMap<>(originCountMap.size() + 1);
                     newMap.putAll(originCountMap);
                     newMap.put(origin, statisticNode);
                     originCountMap = newMap;
@@ -82,21 +119,8 @@ public class ClusterNode extends StatisticNode {
         return statisticNode;
     }
 
-    public synchronized Map<String, StatisticNode> getOriginCountMap() {
+    public Map<String, StatisticNode> getOriginCountMap() {
         return originCountMap;
     }
 
-    /**
-     * Add exception count only when given {@code throwable} is not a {@link BlockException}.
-     *
-     * @param throwable target exception
-     * @param count     count to add
-     */
-    public void trace(Throwable throwable, int count) {
-        if (!BlockException.isBlockException(throwable)) {
-            for (int i = 0; i < count; i++) {
-                this.increaseExceptionQps();
-            }
-        }
-    }
 }

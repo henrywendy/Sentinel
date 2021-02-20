@@ -24,6 +24,9 @@ public final class ClusterConstants {
     public static final int MSG_TYPE_PING = 0;
     public static final int MSG_TYPE_FLOW = 1;
     public static final int MSG_TYPE_PARAM_FLOW = 2;
+    public static final int MSG_TYPE_CONCURRENT_FLOW_ACQUIRE = 3;
+    public static final int MSG_TYPE_CONCURRENT_FLOW_RELEASE = 4;
+
 
     public static final int RESPONSE_STATUS_BAD = -1;
     public static final int RESPONSE_STATUS_OK = 0;
@@ -37,8 +40,9 @@ public final class ClusterConstants {
     public static final int PARAM_TYPE_BOOLEAN = 6;
     public static final int PARAM_TYPE_STRING = 7;
 
-    public static final int DEFAULT_CLUSTER_SERVER_PORT = 8730;
+    public static final int DEFAULT_CLUSTER_SERVER_PORT = 18730;
     public static final int DEFAULT_REQUEST_TIMEOUT = 20;
+    public static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 10 * 1000;
 
     private ClusterConstants() {}
 }

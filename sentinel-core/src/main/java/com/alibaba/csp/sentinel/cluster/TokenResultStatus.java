@@ -26,6 +26,10 @@ public final class TokenResultStatus {
      */
     public static final int BAD_REQUEST = -4;
     /**
+     * Too many request in server.
+     */
+    public static final int TOO_MANY_REQUEST = -2;
+    /**
      * Server or client unexpected failure (due to transport or serialization failure).
      */
     public static final int FAIL = -1;
@@ -55,6 +59,15 @@ public final class TokenResultStatus {
      * Token acquire failed (strategy not available).
      */
     public static final int NOT_AVAILABLE = 5;
+    /**
+     * Token is successfully released.
+     */
+    public static final int RELEASE_OK = 6;
+    /**
+     * Token already is released before the request arrives.
+     */
+    public static final int ALREADY_RELEASE=7;
 
-    private TokenResultStatus() {}
+    private TokenResultStatus() {
+    }
 }

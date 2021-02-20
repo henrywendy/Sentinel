@@ -53,7 +53,7 @@ public class NettyTransportServer implements ClusterTokenServer {
     private static final int DEFAULT_EVENT_LOOP_THREADS = Math.max(1,
         SystemPropertyUtil.getInt("io.netty.eventLoopThreads", Runtime.getRuntime().availableProcessors() * 2));
     private static final int MAX_RETRY_TIMES = 3;
-    private static final int RETRY_SLEEP_MS = 1000;
+    private static final int RETRY_SLEEP_MS = 2000;
 
     private final int port;
 
@@ -103,7 +103,7 @@ public class NettyTransportServer implements ClusterTokenServer {
             @Override
             public void operationComplete(ChannelFuture future) {
                 if (future.cause() != null) {
-                    RecordLog.info("[NettyTransportServer] Token server start failed (port=" + port + ")",
+                    RecordLog.info("[NettyTransportServer] Token server start failed (port=" + port + "), failedTimes: " + failedTimes.get(),
                         future.cause());
                     currentState.compareAndSet(SERVER_STATUS_STARTING, SERVER_STATUS_OFF);
                     int failCount = failedTimes.incrementAndGet();
@@ -118,7 +118,7 @@ public class NettyTransportServer implements ClusterTokenServer {
                         RecordLog.info("[NettyTransportServer] Failed to start token server when retrying", e);
                     }
                 } else {
-                    RecordLog.info("[NettyTransportServer] Token server started success at port " + port);
+                    RecordLog.info("[NettyTransportServer] Token server started success at port {}", port);
                     currentState.compareAndSet(SERVER_STATUS_STARTING, SERVER_STATUS_STARTED);
                 }
             }

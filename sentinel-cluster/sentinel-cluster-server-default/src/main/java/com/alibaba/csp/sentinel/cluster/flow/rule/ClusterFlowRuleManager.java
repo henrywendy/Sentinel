@@ -15,17 +15,10 @@
  */
 package com.alibaba.csp.sentinel.cluster.flow.rule;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.alibaba.csp.sentinel.cluster.flow.statistic.ClusterMetricStatistics;
+import com.alibaba.csp.sentinel.cluster.flow.statistic.concurrent.CurrentConcurrencyManager;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.metric.ClusterMetric;
 import com.alibaba.csp.sentinel.cluster.server.ServerConstants;
-import com.alibaba.csp.sentinel.cluster.server.config.ClusterServerConfigManager;
 import com.alibaba.csp.sentinel.cluster.server.connection.ConnectionManager;
 import com.alibaba.csp.sentinel.cluster.server.util.ClusterRuleUtil;
 import com.alibaba.csp.sentinel.log.RecordLog;
@@ -33,12 +26,16 @@ import com.alibaba.csp.sentinel.property.DynamicSentinelProperty;
 import com.alibaba.csp.sentinel.property.PropertyListener;
 import com.alibaba.csp.sentinel.property.SentinelProperty;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
+import com.alibaba.csp.sentinel.slots.block.flow.ClusterFlowConfig;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleUtil;
 import com.alibaba.csp.sentinel.util.AssertUtil;
 import com.alibaba.csp.sentinel.util.StringUtil;
 import com.alibaba.csp.sentinel.util.function.Function;
 import com.alibaba.csp.sentinel.util.function.Predicate;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manager for cluster flow rules.
@@ -53,12 +50,12 @@ public final class ClusterFlowRuleManager {
      * for a specific namespace to do rule management manually.
      */
     public static final Function<String, SentinelProperty<List<FlowRule>>> DEFAULT_PROPERTY_SUPPLIER =
-        new Function<String, SentinelProperty<List<FlowRule>>>() {
-            @Override
-            public SentinelProperty<List<FlowRule>> apply(String namespace) {
-                return new DynamicSentinelProperty<>();
-            }
-        };
+            new Function<String, SentinelProperty<List<FlowRule>>>() {
+                @Override
+                public SentinelProperty<List<FlowRule>> apply(String namespace) {
+                    return new DynamicSentinelProperty<>();
+                }
+            };
 
     /**
      * (flowId, clusterRule)
@@ -86,7 +83,7 @@ public final class ClusterFlowRuleManager {
      * Cluster flow rule property supplier for a specific namespace.
      */
     private static volatile Function<String, SentinelProperty<List<FlowRule>>> propertySupplier
-        = DEFAULT_PROPERTY_SUPPLIER;
+            = DEFAULT_PROPERTY_SUPPLIER;
 
     private static final Object UPDATE_LOCK = new Object();
 
@@ -103,6 +100,7 @@ public final class ClusterFlowRuleManager {
     }
 
     public static void setPropertySupplier(Function<String, SentinelProperty<List<FlowRule>>> propertySupplier) {
+        AssertUtil.notNull(propertySupplier, "flow rule property supplier cannot be null");
         ClusterFlowRuleManager.propertySupplier = propertySupplier;
     }
 
@@ -116,18 +114,18 @@ public final class ClusterFlowRuleManager {
         AssertUtil.notEmpty(namespace, "namespace cannot be empty");
         if (propertySupplier == null) {
             RecordLog.warn(
-                "[ClusterFlowRuleManager] Cluster flow property supplier is absent, cannot register property");
+                    "[ClusterFlowRuleManager] Cluster flow property supplier is absent, cannot register property");
             return;
         }
         SentinelProperty<List<FlowRule>> property = propertySupplier.apply(namespace);
         if (property == null) {
             RecordLog.warn(
-                "[ClusterFlowRuleManager] Wrong created property from cluster flow property supplier, ignoring");
+                    "[ClusterFlowRuleManager] Wrong created property from cluster flow property supplier, ignoring");
             return;
         }
         synchronized (UPDATE_LOCK) {
             RecordLog.info("[ClusterFlowRuleManager] Registering new property to cluster flow rule manager"
-                + " for namespace <{0}>", namespace);
+                    + " for namespace <{}>", namespace);
             registerPropertyInternal(namespace, property);
         }
     }
@@ -178,7 +176,7 @@ public final class ClusterFlowRuleManager {
                 PROPERTY_MAP.remove(namespace);
             }
             RecordLog.info("[ClusterFlowRuleManager] Removing property from cluster flow rule manager"
-                + " for namespace <{0}>", namespace);
+                    + " for namespace <{}>", namespace);
         }
     }
 
@@ -206,6 +204,17 @@ public final class ClusterFlowRuleManager {
             return null;
         }
         return FLOW_RULES.get(id);
+    }
+
+    public static Set<Long> getFlowIdSet(String namespace) {
+        if (StringUtil.isEmpty(namespace)) {
+            return new HashSet<>();
+        }
+        Set<Long> set = NAMESPACE_FLOW_ID_MAP.get(namespace);
+        if (set == null) {
+            return new HashSet<>();
+        }
+        return new HashSet<>(set);
     }
 
     public static List<FlowRule> getAllFlowRules() {
@@ -240,7 +249,7 @@ public final class ClusterFlowRuleManager {
      * Load flow rules for a specific namespace. The former rules of the namespace will be replaced.
      *
      * @param namespace a valid namespace
-     * @param rules rule list
+     * @param rules     rule list
      */
     public static void loadRules(String namespace, List<FlowRule> rules) {
         AssertUtil.notEmpty(namespace, "namespace cannot be empty");
@@ -265,6 +274,9 @@ public final class ClusterFlowRuleManager {
             for (Long flowId : flowIdSet) {
                 FLOW_RULES.remove(flowId);
                 FLOW_NAMESPACE_MAP.remove(flowId);
+                if (CurrentConcurrencyManager.containsFlowId(flowId)) {
+                    CurrentConcurrencyManager.remove(flowId);
+                }
             }
             flowIdSet.clear();
         } else {
@@ -280,6 +292,9 @@ public final class ClusterFlowRuleManager {
                     FLOW_RULES.remove(flowId);
                     FLOW_NAMESPACE_MAP.remove(flowId);
                     ClusterMetricStatistics.removeMetric(flowId);
+                    if (CurrentConcurrencyManager.containsFlowId(flowId)) {
+                        CurrentConcurrencyManager.remove(flowId);
+                    }
                 }
             }
             oldIdSet.clear();
@@ -303,6 +318,10 @@ public final class ClusterFlowRuleManager {
         return ConnectionManager.getConnectedCount(namespace);
     }
 
+    public static String getNamespace(long flowId) {
+        return FLOW_NAMESPACE_MAP.get(flowId);
+    }
+
     private static void applyClusterFlowRule(List<FlowRule> list, /*@Valid*/ String namespace) {
         if (list == null || list.isEmpty()) {
             clearAndResetRulesFor(namespace);
@@ -318,7 +337,7 @@ public final class ClusterFlowRuleManager {
             }
             if (!FlowRuleUtil.isValidRule(rule)) {
                 RecordLog.warn(
-                    "[ClusterFlowRuleManager] Ignoring invalid flow rule when loading new flow rules: " + rule);
+                        "[ClusterFlowRuleManager] Ignoring invalid flow rule when loading new flow rules: " + rule);
                 continue;
             }
             if (StringUtil.isBlank(rule.getLimitApp())) {
@@ -326,18 +345,21 @@ public final class ClusterFlowRuleManager {
             }
 
             // Flow id should not be null after filtered.
-            Long flowId = rule.getClusterConfig().getFlowId();
+            ClusterFlowConfig clusterConfig = rule.getClusterConfig();
+            Long flowId = clusterConfig.getFlowId();
             if (flowId == null) {
                 continue;
             }
             ruleMap.put(flowId, rule);
             FLOW_NAMESPACE_MAP.put(flowId, namespace);
             flowIdSet.add(flowId);
+            if (!CurrentConcurrencyManager.containsFlowId(flowId)) {
+                CurrentConcurrencyManager.put(flowId, 0);
+            }
 
             // Prepare cluster metric from valid flow ID.
             ClusterMetricStatistics.putMetricIfAbsent(flowId,
-                new ClusterMetric(ClusterServerConfigManager.getSampleCount(),
-                    ClusterServerConfigManager.getIntervalMs()));
+                    new ClusterMetric(clusterConfig.getSampleCount(), clusterConfig.getWindowIntervalMs()));
         }
 
         // Cleanup unused cluster metrics.
@@ -363,17 +385,18 @@ public final class ClusterFlowRuleManager {
         @Override
         public synchronized void configUpdate(List<FlowRule> conf) {
             applyClusterFlowRule(conf, namespace);
-            RecordLog.info("[ClusterFlowRuleManager] Cluster flow rules received for namespace <{0}>: {1}",
-                namespace, FLOW_RULES);
+            RecordLog.info("[ClusterFlowRuleManager] Cluster flow rules received for namespace <{}>: {}",
+                    namespace, FLOW_RULES);
         }
 
         @Override
         public synchronized void configLoad(List<FlowRule> conf) {
             applyClusterFlowRule(conf, namespace);
-            RecordLog.info("[ClusterFlowRuleManager] Cluster flow rules loaded for namespace <{0}>: {1}",
-                namespace, FLOW_RULES);
+            RecordLog.info("[ClusterFlowRuleManager] Cluster flow rules loaded for namespace <{}>: {}",
+                    namespace, FLOW_RULES);
         }
     }
 
-    private ClusterFlowRuleManager() {}
+    private ClusterFlowRuleManager() {
+    }
 }

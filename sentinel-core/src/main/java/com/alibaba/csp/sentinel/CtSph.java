@@ -71,7 +71,7 @@ public class CtSph implements Sph {
         }
         if (context == null) {
             // Using default context.
-            context = MyContextUtil.myEnter(Constants.CONTEXT_DEFAULT_NAME, "", resourceWrapper.getType());
+            context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);
         }
 
         // Global switch is turned off, so no rule checking will be done.
@@ -109,7 +109,8 @@ public class CtSph implements Sph {
         return asyncEntry;
     }
 
-    private AsyncEntry asyncEntryInternal(ResourceWrapper resourceWrapper, int count, Object... args) throws BlockException {
+    private AsyncEntry asyncEntryInternal(ResourceWrapper resourceWrapper, int count, Object... args)
+        throws BlockException {
         return asyncEntryWithPriorityInternal(resourceWrapper, count, false, args);
     }
 
@@ -124,7 +125,7 @@ public class CtSph implements Sph {
 
         if (context == null) {
             // Using default context.
-            context = MyContextUtil.myEnter(Constants.CONTEXT_DEFAULT_NAME, "", resourceWrapper.getType());
+            context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);
         }
 
         // Global switch is close, no rule checking will do.
@@ -180,7 +181,7 @@ public class CtSph implements Sph {
      * be created if the resource doesn't relate one.
      *
      * <p>Same resource({@link ResourceWrapper#equals(Object)}) will share the same
-     * {@link ProcessorSlotChain} globally, no matter in witch {@link Context}.<p/>
+     * {@link ProcessorSlotChain} globally, no matter in which {@link Context}.<p/>
      *
      * <p>
      * Note that total {@link ProcessorSlot} count must not exceed {@link Constants#MAX_SLOT_CHAIN_SIZE},
@@ -244,8 +245,12 @@ public class CtSph implements Sph {
     /**
      * This class is used for skip context name checking.
      */
-    private final static class MyContextUtil extends ContextUtil {
-        static Context myEnter(String name, String origin, EntryType type) {
+    private final static class InternalContextUtil extends ContextUtil {
+        static Context internalEnter(String name) {
+            return trueEnter(name, "");
+        }
+
+        static Context internalEnter(String name, String origin) {
             return trueEnter(name, origin);
         }
     }
@@ -320,5 +325,32 @@ public class CtSph implements Sph {
     public Entry entryWithPriority(String name, EntryType type, int count, boolean prioritized) throws BlockException {
         StringResourceWrapper resource = new StringResourceWrapper(name, type);
         return entryWithPriority(resource, count, prioritized);
+    }
+
+    @Override
+    public Entry entryWithPriority(String name, EntryType type, int count, boolean prioritized, Object... args)
+        throws BlockException {
+        StringResourceWrapper resource = new StringResourceWrapper(name, type);
+        return entryWithPriority(resource, count, prioritized, args);
+    }
+
+    @Override
+    public Entry entryWithType(String name, int resourceType, EntryType entryType, int count, Object[] args)
+        throws BlockException {
+        return entryWithType(name, resourceType, entryType, count, false, args);
+    }
+
+    @Override
+    public Entry entryWithType(String name, int resourceType, EntryType entryType, int count, boolean prioritized,
+                               Object[] args) throws BlockException {
+        StringResourceWrapper resource = new StringResourceWrapper(name, entryType, resourceType);
+        return entryWithPriority(resource, count, prioritized, args);
+    }
+
+    @Override
+    public AsyncEntry asyncEntryWithType(String name, int resourceType, EntryType entryType, int count,
+                                         boolean prioritized, Object[] args) throws BlockException {
+        StringResourceWrapper resource = new StringResourceWrapper(name, entryType, resourceType);
+        return asyncEntryWithPriorityInternal(resource, count, prioritized, args);
     }
 }

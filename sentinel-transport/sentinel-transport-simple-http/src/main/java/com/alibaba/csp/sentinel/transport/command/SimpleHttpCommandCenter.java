@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import com.alibaba.csp.sentinel.command.CommandHandler;
 import com.alibaba.csp.sentinel.command.CommandHandlerProvider;
 import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
-import com.alibaba.csp.sentinel.log.CommandCenterLog;
+import com.alibaba.csp.sentinel.transport.log.CommandCenterLog;
 import com.alibaba.csp.sentinel.transport.CommandCenter;
 import com.alibaba.csp.sentinel.transport.command.http.HttpEventTask;
 import com.alibaba.csp.sentinel.transport.config.TransportConfig;
@@ -55,6 +55,7 @@ public class SimpleHttpCommandCenter implements CommandCenter {
     @SuppressWarnings("rawtypes")
     private static final Map<String, CommandHandler> handlerMap = new ConcurrentHashMap<String, CommandHandler>();
 
+    @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private ExecutorService executor = Executors.newSingleThreadExecutor(
         new NamedThreadFactory("sentinel-command-center-executor"));
     private ExecutorService bizExecutor;

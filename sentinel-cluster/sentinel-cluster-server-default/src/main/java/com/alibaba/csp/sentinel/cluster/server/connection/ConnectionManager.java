@@ -55,7 +55,7 @@ public final class ConnectionManager {
         ConnectionGroup group = CONN_MAP.get(namespace);
         if (group == null) {
             synchronized (CREATE_LOCK) {
-                if (CONN_MAP.get(namespace) == null) {
+                if ((group = CONN_MAP.get(namespace)) == null) {
                     group = new ConnectionGroup(namespace);
                     CONN_MAP.put(namespace, group);
                 }
@@ -73,7 +73,7 @@ public final class ConnectionManager {
                 return;
             }
             group.removeConnection(address);
-            RecordLog.info("[ConnectionManager] Client <{0}> disconnected and removed from namespace <{1}>", address, namespace);
+            RecordLog.info("[ConnectionManager] Client <{}> disconnected and removed from namespace <{}>", address, namespace);
         }
         NAMESPACE_MAP.remove(address);
     }
@@ -87,7 +87,7 @@ public final class ConnectionManager {
         }
         group.removeConnection(address);
         NAMESPACE_MAP.remove(address);
-        RecordLog.info("[ConnectionManager] Client <{0}> disconnected and removed from namespace <{1}>", address, namespace);
+        RecordLog.info("[ConnectionManager] Client <{}> disconnected and removed from namespace <{}>", address, namespace);
     }
 
     public static ConnectionGroup addConnection(String namespace, String address) {
@@ -96,14 +96,28 @@ public final class ConnectionManager {
         ConnectionGroup group = getOrCreateGroup(namespace);
         group.addConnection(address);
         NAMESPACE_MAP.put(address, namespace);
-        RecordLog.info("[ConnectionManager] Client <{0}> registered with namespace <{1}>", address, namespace);
+        RecordLog.info("[ConnectionManager] Client <{}> registered with namespace <{}>", address, namespace);
+        return group;
+    }
+
+    public static ConnectionGroup getOrCreateConnectionGroup(String namespace) {
+        AssertUtil.assertNotBlank(namespace, "namespace should not be empty");
+        ConnectionGroup group = getOrCreateGroup(namespace);
         return group;
     }
 
     public static ConnectionGroup getConnectionGroup(String namespace) {
         AssertUtil.assertNotBlank(namespace, "namespace should not be empty");
-        ConnectionGroup group = getOrCreateGroup(namespace);
+        ConnectionGroup group = CONN_MAP.get(namespace);
         return group;
+    }
+
+    public static boolean isClientOnline(String address){
+        return NAMESPACE_MAP.containsKey(address);
+    }
+    static void clear() {
+        CONN_MAP.clear();
+        NAMESPACE_MAP.clear();
     }
 
     private static final Object CREATE_LOCK = new Object();

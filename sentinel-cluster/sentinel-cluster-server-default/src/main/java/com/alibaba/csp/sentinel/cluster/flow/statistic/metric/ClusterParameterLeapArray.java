@@ -30,14 +30,14 @@ public class ClusterParameterLeapArray<C> extends LeapArray<CacheMap<Object, C>>
 
     private final int maxCapacity;
 
-    public ClusterParameterLeapArray(int windowLengthInMs, int intervalInMs, int maxCapacity) {
-        super(windowLengthInMs, intervalInMs / 1000);
+    public ClusterParameterLeapArray(int sampleCount, int intervalInMs, int maxCapacity) {
+        super(sampleCount, intervalInMs);
         AssertUtil.isTrue(maxCapacity > 0, "maxCapacity of LRU map should be positive");
         this.maxCapacity = maxCapacity;
     }
 
     @Override
-    public CacheMap<Object, C> newEmptyBucket() {
+    public CacheMap<Object, C> newEmptyBucket(long timeMillis) {
         return new ConcurrentLinkedHashMapWrapper<>(maxCapacity);
     }
 
@@ -47,6 +47,5 @@ public class ClusterParameterLeapArray<C> extends LeapArray<CacheMap<Object, C>>
         w.value().clear();
         return w;
     }
-
 
 }

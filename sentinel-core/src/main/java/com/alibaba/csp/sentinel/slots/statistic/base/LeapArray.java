@@ -28,7 +28,7 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  * Basic data structure for statistic metrics in Sentinel.
  * </p>
  * <p>
- * Leap array use sliding window algorithm to count data. Each bucket cover {code windowLengthInMs} time span,
+ * Leap array use sliding window algorithm to count data. Each bucket cover {@code windowLengthInMs} time span,
  * and the total time span is {@link #intervalInMs}, so the total bucket amount is:
  * {@code sampleCount = intervalInMs / windowLengthInMs}.
  * </p>
@@ -43,6 +43,7 @@ public abstract class LeapArray<T> {
     protected int windowLengthInMs;
     protected int sampleCount;
     protected int intervalInMs;
+    private double intervalInSecond;
 
     protected final AtomicReferenceArray<WindowWrap<T>> array;
 
@@ -54,22 +55,20 @@ public abstract class LeapArray<T> {
     /**
      * The total bucket count is: {@code sampleCount = intervalInMs / windowLengthInMs}.
      *
-     * @param windowLengthInMs a single window bucket's time length in milliseconds.
-     * @param intervalInSec    the total time span of this {@link LeapArray} in seconds.
+     * @param sampleCount  bucket count of the sliding window
+     * @param intervalInMs the total time interval of this {@link LeapArray} in milliseconds
      */
-    public LeapArray(int windowLengthInMs, int intervalInSec) {
-        // TODO: change `intervalInSec` to `intervalInMs`
-        AssertUtil.isTrue(windowLengthInMs > 0, "bucket length is invalid: " + windowLengthInMs);
-        int intervalInMs = intervalInSec * 1000;
-        AssertUtil.isTrue(intervalInMs > windowLengthInMs,
-            "total time span of the window should be greater than bucket length");
-        AssertUtil.isTrue(intervalInMs % windowLengthInMs == 0, "time span needs to be evenly divided");
+    public LeapArray(int sampleCount, int intervalInMs) {
+        AssertUtil.isTrue(sampleCount > 0, "bucket count is invalid: " + sampleCount);
+        AssertUtil.isTrue(intervalInMs > 0, "total time interval of the sliding window should be positive");
+        AssertUtil.isTrue(intervalInMs % sampleCount == 0, "time span needs to be evenly divided");
 
-        this.windowLengthInMs = windowLengthInMs;
+        this.windowLengthInMs = intervalInMs / sampleCount;
         this.intervalInMs = intervalInMs;
-        this.sampleCount = intervalInMs / windowLengthInMs;
+        this.intervalInSecond = intervalInMs / 1000.0;
+        this.sampleCount = sampleCount;
 
-        this.array = new AtomicReferenceArray<WindowWrap<T>>(sampleCount);
+        this.array = new AtomicReferenceArray<>(sampleCount);
     }
 
     /**
@@ -84,9 +83,10 @@ public abstract class LeapArray<T> {
     /**
      * Create a new statistic value for bucket.
      *
+     * @param timeMillis current time in milliseconds
      * @return the new empty bucket
      */
-    public abstract T newEmptyBucket();
+    public abstract T newEmptyBucket(long timeMillis);
 
     /**
      * Reset given bucket to provided start time and reset the value.
@@ -97,7 +97,7 @@ public abstract class LeapArray<T> {
      */
     protected abstract WindowWrap<T> resetWindowTo(WindowWrap<T> windowWrap, long startTime);
 
-    protected int calculateTimeIdx(/*@Valid*/ long timeMillis) {
+    private int calculateTimeIdx(/*@Valid*/ long timeMillis) {
         long timeId = timeMillis / windowLengthInMs;
         // Calculate current index so we can map the timestamp to the leap array.
         return (int)(timeId % array.length());
@@ -144,7 +144,7 @@ public abstract class LeapArray<T> {
                  * then try to update circular array via a CAS operation. Only one thread can
                  * succeed to update, while other threads yield its time slice.
                  */
-                WindowWrap<T> window = new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket());
+                WindowWrap<T> window = new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket(timeMillis));
                 if (array.compareAndSet(idx, null, window)) {
                     // Successfully updated, return the created bucket.
                     return window;
@@ -196,7 +196,7 @@ public abstract class LeapArray<T> {
                 }
             } else if (windowStart < old.windowStart()) {
                 // Should not go through here, as the provided time is already behind.
-                return new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket());
+                return new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket(timeMillis));
             }
         }
     }
@@ -211,8 +211,7 @@ public abstract class LeapArray<T> {
         if (timeMillis < 0) {
             return null;
         }
-        long timeId = (timeMillis - windowLengthInMs) / windowLengthInMs;
-        int idx = (int)(timeId % array.length());
+        int idx = calculateTimeIdx(timeMillis - windowLengthInMs);
         timeMillis = timeMillis - windowLengthInMs;
         WindowWrap<T> wrap = array.get(idx);
 
@@ -239,21 +238,22 @@ public abstract class LeapArray<T> {
     /**
      * Get statistic value from bucket for provided timestamp.
      *
-     * @param time a valid timestamp in milliseconds
+     * @param timeMillis a valid timestamp in milliseconds
      * @return the statistic value if bucket for provided timestamp is up-to-date; otherwise null
      */
-    public T getWindowValue(long time) {
-        if (time < 0) {
+    public T getWindowValue(long timeMillis) {
+        if (timeMillis < 0) {
             return null;
         }
-        int idx = calculateTimeIdx(time);
+        int idx = calculateTimeIdx(timeMillis);
 
-        WindowWrap<T> old = array.get(idx);
-        if (old == null || isWindowDeprecated(old)) {
+        WindowWrap<T> bucket = array.get(idx);
+
+        if (bucket == null || !bucket.isTimeInWindow(timeMillis)) {
             return null;
         }
 
-        return old.value();
+        return bucket.value();
     }
 
     /**
@@ -263,8 +263,12 @@ public abstract class LeapArray<T> {
      * @param windowWrap a non-null bucket
      * @return true if the bucket is deprecated; otherwise false
      */
-    protected boolean isWindowDeprecated(/*@NonNull*/ WindowWrap<T> windowWrap) {
-        return TimeUtil.currentTimeMillis() - windowWrap.windowStart() >= intervalInMs;
+    public boolean isWindowDeprecated(/*@NonNull*/ WindowWrap<T> windowWrap) {
+        return isWindowDeprecated(TimeUtil.currentTimeMillis(), windowWrap);
+    }
+
+    public boolean isWindowDeprecated(long time, WindowWrap<T> windowWrap) {
+        return time - windowWrap.windowStart() > intervalInMs;
     }
 
     /**
@@ -274,12 +278,36 @@ public abstract class LeapArray<T> {
      * @return valid bucket list for entire sliding window.
      */
     public List<WindowWrap<T>> list() {
+        return list(TimeUtil.currentTimeMillis());
+    }
+
+    public List<WindowWrap<T>> list(long validTime) {
         int size = array.length();
         List<WindowWrap<T>> result = new ArrayList<WindowWrap<T>>(size);
 
         for (int i = 0; i < size; i++) {
             WindowWrap<T> windowWrap = array.get(i);
-            if (windowWrap == null || isWindowDeprecated(windowWrap)) {
+            if (windowWrap == null || isWindowDeprecated(validTime, windowWrap)) {
+                continue;
+            }
+            result.add(windowWrap);
+        }
+
+        return result;
+    }
+
+    /**
+     * Get all buckets for entire sliding window including deprecated buckets.
+     *
+     * @return all buckets for entire sliding window
+     */
+    public List<WindowWrap<T>> listAll() {
+        int size = array.length();
+        List<WindowWrap<T>> result = new ArrayList<WindowWrap<T>>(size);
+
+        for (int i = 0; i < size; i++) {
+            WindowWrap<T> windowWrap = array.get(i);
+            if (windowWrap == null) {
                 continue;
             }
             result.add(windowWrap);
@@ -295,12 +323,19 @@ public abstract class LeapArray<T> {
      * @return aggregated value list for entire sliding window
      */
     public List<T> values() {
+        return values(TimeUtil.currentTimeMillis());
+    }
+
+    public List<T> values(long timeMillis) {
+        if (timeMillis < 0) {
+            return new ArrayList<T>();
+        }
         int size = array.length();
         List<T> result = new ArrayList<T>(size);
 
         for (int i = 0; i < size; i++) {
             WindowWrap<T> windowWrap = array.get(i);
-            if (windowWrap == null || isWindowDeprecated(windowWrap)) {
+            if (windowWrap == null || isWindowDeprecated(timeMillis, windowWrap)) {
                 continue;
             }
             result.add(windowWrap.value());
@@ -346,11 +381,40 @@ public abstract class LeapArray<T> {
     }
 
     /**
+     * Get total interval length of the sliding window in milliseconds.
+     *
+     * @return interval in second
+     */
+    public int getIntervalInMs() {
+        return intervalInMs;
+    }
+
+    /**
      * Get total interval length of the sliding window.
      *
      * @return interval in second
      */
-    public int getIntervalInSecond() {
-        return intervalInMs / 1000;
+    public double getIntervalInSecond() {
+        return intervalInSecond;
+    }
+
+    public void debug(long time) {
+        StringBuilder sb = new StringBuilder();
+        List<WindowWrap<T>> lists = list(time);
+        sb.append("Thread_").append(Thread.currentThread().getId()).append("_");
+        for (WindowWrap<T> window : lists) {
+            sb.append(window.windowStart()).append(":").append(window.value().toString());
+        }
+        System.out.println(sb.toString());
+    }
+
+    public long currentWaiting() {
+        // TODO: default method. Should remove this later.
+        return 0;
+    }
+
+    public void addWaiting(long time, int acquireCount) {
+        // Do nothing by default.
+        throw new UnsupportedOperationException();
     }
 }

@@ -15,10 +15,7 @@
  */
 package com.alibaba.csp.sentinel.slots.nodeselector;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.alibaba.csp.sentinel.Env;
+import com.alibaba.csp.sentinel.Constants;
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.alibaba.csp.sentinel.node.ClusterNode;
@@ -26,6 +23,10 @@ import com.alibaba.csp.sentinel.node.DefaultNode;
 import com.alibaba.csp.sentinel.node.EntranceNode;
 import com.alibaba.csp.sentinel.slotchain.AbstractLinkedProcessorSlot;
 import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
+import com.alibaba.csp.sentinel.spi.Spi;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * </p>
@@ -33,7 +34,7 @@ import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
  * <ol>
  * <li>adding a new {@link DefaultNode} if needed as the last child in the context.
  * The context's last node is the current node or the parent node of the context. </li>
- * <li>setting itself to the the context current node.</li>
+ * <li>setting itself to the context current node.</li>
  * </ol>
  * </p>
  *
@@ -123,6 +124,7 @@ import com.alibaba.csp.sentinel.slotchain.ResourceWrapper;
  * @see EntranceNode
  * @see ContextUtil
  */
+@Spi(isSingleton = false, order = Constants.ORDER_NODE_SELECTOR_SLOT)
 public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
 
     /**
@@ -156,14 +158,15 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
             synchronized (this) {
                 node = map.get(context.getName());
                 if (node == null) {
-                    node = Env.nodeBuilder.buildTreeNode(resourceWrapper, null);
+                    node = new DefaultNode(resourceWrapper, null);
                     HashMap<String, DefaultNode> cacheMap = new HashMap<String, DefaultNode>(map.size());
                     cacheMap.putAll(map);
                     cacheMap.put(context.getName(), node);
                     map = cacheMap;
+                    // Build invocation tree
+                    ((DefaultNode) context.getLastNode()).addChild(node);
                 }
-                // Build invocation tree
-                ((DefaultNode)context.getLastNode()).addChild(node);
+
             }
         }
 

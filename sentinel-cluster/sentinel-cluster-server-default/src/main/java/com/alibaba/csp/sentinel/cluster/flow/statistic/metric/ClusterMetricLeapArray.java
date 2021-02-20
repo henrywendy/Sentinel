@@ -15,10 +15,11 @@
  */
 package com.alibaba.csp.sentinel.cluster.flow.statistic.metric;
 
+import java.util.concurrent.atomic.LongAdder;
+
 import com.alibaba.csp.sentinel.cluster.flow.statistic.data.ClusterFlowEvent;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.data.ClusterMetricBucket;
 import com.alibaba.csp.sentinel.slots.statistic.base.LeapArray;
-import com.alibaba.csp.sentinel.slots.statistic.base.LongAdder;
 import com.alibaba.csp.sentinel.slots.statistic.base.WindowWrap;
 
 /**
@@ -30,14 +31,8 @@ public class ClusterMetricLeapArray extends LeapArray<ClusterMetricBucket> {
     private final LongAdder[] occupyCounter;
     private boolean hasOccupied = false;
 
-    /**
-     * The total bucket count is: {@link #sampleCount} = intervalInMs / windowLengthInMs.
-     *
-     * @param windowLengthInMs a single window bucket's time length in milliseconds.
-     * @param intervalInMs    the total time span of this {@link LeapArray} in milliseconds.
-     */
-    public ClusterMetricLeapArray(int windowLengthInMs, int intervalInMs) {
-        super(windowLengthInMs, intervalInMs / 1000);
+    public ClusterMetricLeapArray(int sampleCount, int intervalInMs) {
+        super(sampleCount, intervalInMs);
         ClusterFlowEvent[] events = ClusterFlowEvent.values();
         this.occupyCounter = new LongAdder[events.length];
         for (ClusterFlowEvent event : events) {
@@ -46,7 +41,7 @@ public class ClusterMetricLeapArray extends LeapArray<ClusterMetricBucket> {
     }
 
     @Override
-    public ClusterMetricBucket newEmptyBucket() {
+    public ClusterMetricBucket newEmptyBucket(long timeMillis) {
         return new ClusterMetricBucket();
     }
 

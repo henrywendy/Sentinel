@@ -19,6 +19,7 @@ import com.alibaba.csp.sentinel.cluster.TokenResultStatus;
 import com.alibaba.csp.sentinel.cluster.TokenResult;
 import com.alibaba.csp.sentinel.cluster.flow.rule.ClusterFlowRuleManager;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.ClusterMetricStatistics;
+import com.alibaba.csp.sentinel.cluster.flow.statistic.limit.GlobalRequestLimiter;
 import com.alibaba.csp.sentinel.cluster.server.config.ClusterServerConfigManager;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.data.ClusterFlowEvent;
 import com.alibaba.csp.sentinel.cluster.flow.statistic.metric.ClusterMetric;
@@ -46,14 +47,24 @@ final class ClusterFlowChecker {
         }
     }
 
+    static boolean allowProceed(long flowId) {
+        String namespace = ClusterFlowRuleManager.getNamespace(flowId);
+        return GlobalRequestLimiter.tryPass(namespace);
+    }
+
     static TokenResult acquireClusterToken(/*@Valid*/ FlowRule rule, int acquireCount, boolean prioritized) {
         Long id = rule.getClusterConfig().getFlowId();
+
+        if (!allowProceed(id)) {
+            return new TokenResult(TokenResultStatus.TOO_MANY_REQUEST);
+        }
+
         ClusterMetric metric = ClusterMetricStatistics.getMetric(id);
         if (metric == null) {
             return new TokenResult(TokenResultStatus.FAIL);
         }
 
-        double latestQps = metric.getAvg(ClusterFlowEvent.PASS_REQUEST);
+        double latestQps = metric.getAvg(ClusterFlowEvent.PASS);
         double globalThreshold = calcGlobalThreshold(rule) * ClusterServerConfigManager.getExceedCount();
         double nextRemaining = globalThreshold - latestQps - acquireCount;
 

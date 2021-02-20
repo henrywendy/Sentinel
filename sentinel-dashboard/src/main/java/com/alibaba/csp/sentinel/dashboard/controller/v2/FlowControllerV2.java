@@ -14,24 +14,29 @@
  * limitations under the License.
  */
 package com.alibaba.csp.sentinel.dashboard.controller.v2;
-
 import java.util.Date;
 import java.util.List;
+<<<<<<< HEAD
 
 <<<<<<< HEAD:sentinel-dashboard/src/main/java/com/taobao/csp/sentinel/dashboard/view/FlowControllerV2.java
 =======
 import com.alibaba.csp.sentinel.dashboard.auth.AuthAction;
+=======
+import javax.servlet.http.HttpServletRequest;
+>>>>>>> 3cd21d06bf209c0c34f056da47571cafe6755a94
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService;
 import com.alibaba.csp.sentinel.dashboard.auth.AuthService.PrivilegeType;
 import com.alibaba.csp.sentinel.util.StringUtil;
-
 import com.alibaba.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
 import com.alibaba.csp.sentinel.dashboard.repository.rule.InMemoryRuleRepositoryAdapter;
 import com.alibaba.csp.sentinel.dashboard.rule.DynamicRuleProvider;
 import com.alibaba.csp.sentinel.dashboard.rule.DynamicRulePublisher;
 import com.alibaba.csp.sentinel.dashboard.domain.Result;
+<<<<<<< HEAD
 
 >>>>>>> master:sentinel-dashboard/src/main/java/com/alibaba/csp/sentinel/dashboard/controller/v2/FlowControllerV2.java
+=======
+>>>>>>> 3cd21d06bf209c0c34f056da47571cafe6755a94
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,12 +50,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.alibaba.csp.sentinel.util.StringUtil;
-import com.taobao.csp.sentinel.dashboard.datasource.entity.rule.FlowRuleEntity;
-import com.taobao.csp.sentinel.dashboard.repository.rule.InMemoryRuleRepositoryAdapter;
-import com.taobao.csp.sentinel.dashboard.rule.DynamicRuleProvider;
-import com.taobao.csp.sentinel.dashboard.rule.DynamicRulePublisher;
 
 /**
  * Flow rule controller (v2).
@@ -72,8 +71,7 @@ public class FlowControllerV2 {
     private DynamicRuleProvider<List<FlowRuleEntity>> ruleProvider;
 
     @Autowired
-    //@Qualifier("flowRuleDefaultPublisher")
-    @Qualifier("flowRuleZkPublisher")
+    @Qualifier("flowRuleDefaultPublisher")
     private DynamicRulePublisher<List<FlowRuleEntity>> rulePublisher;
 
     @GetMapping("/rules")

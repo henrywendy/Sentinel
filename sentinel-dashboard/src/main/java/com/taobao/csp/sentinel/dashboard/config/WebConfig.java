@@ -17,8 +17,6 @@ package com.taobao.csp.sentinel.dashboard.config;
 
 import javax.servlet.Filter;
 
-import com.alibaba.csp.sentinel.adapter.servlet.CommonFilter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -27,6 +25,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+
+import com.alibaba.csp.sentinel.adapter.servlet.CommonFilter;
 
 /**
  * @author leyou

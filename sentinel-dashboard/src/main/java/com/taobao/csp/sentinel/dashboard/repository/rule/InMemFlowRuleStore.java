@@ -45,7 +45,7 @@ public class InMemFlowRuleStore extends InMemoryRuleRepositoryAdapter<FlowRuleEn
                 config = new ClusterFlowConfig();
                 entity.setClusterConfig(config);
             }
-            // Set cluster rule id.
+            // Set cluster rule id.  
             config.setFlowId(entity.getId());
         }
         return entity;

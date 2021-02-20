@@ -1,7 +1,7 @@
 /**
  * Copyright © 2015 eqxiu.com 北京中网易企秀科技有限公司  All rights reserved.
  */
-package com.taobao.csp.sentinel.dashboard.repository.rule.ZkFlowRule;
+package com.taobao.csp.sentinel.dashboard.rule.zkFlowRule;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -18,10 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ZkClientHelper {
 
-    @Value("zk.address")
+    @Value("${zk.address}")
     private String connectAddr;
 
-    @Value("zk.timeout")
+    @Value("${zk.timeout}")
     private String sessionTimeOut;
 
     private String retryTime = "10";//默认重试10次

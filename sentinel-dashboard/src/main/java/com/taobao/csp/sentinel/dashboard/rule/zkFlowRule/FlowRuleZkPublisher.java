@@ -1,7 +1,7 @@
 /**
  * Copyright © 2015 eqxiu.com 北京中网易企秀科技有限公司  All rights reserved.
  */
-package com.taobao.csp.sentinel.dashboard.repository.rule.ZkFlowRule;
+package com.taobao.csp.sentinel.dashboard.rule.zkFlowRule;
 
 import java.util.List;
 
@@ -27,7 +27,7 @@ public class FlowRuleZkPublisher implements DynamicRulePublisher<List<FlowRuleEn
     @Resource
     private ZkClientHelper zkClientHelper;
 
-    private static String rolePath = "/sentinel_rules/rule_type";
+    private static String rolePath = "/sentinel_rules/rule_type/";
 
     @Override
     public void publish(String app, List<FlowRuleEntity> rules) throws Exception {
@@ -38,7 +38,7 @@ public class FlowRuleZkPublisher implements DynamicRulePublisher<List<FlowRuleEn
         CuratorFramework zkClient = zkClientHelper.buildClient();
         Stat stat = zkClient.checkExists().forPath(rolePath + app);
         if (stat == null) {
-            zkClient.create().creatingParentContainersIfNeeded().withMode(CreateMode.PERSISTENT);
+            zkClient.create().creatingParentContainersIfNeeded().withMode(CreateMode.PERSISTENT).forPath(rolePath + app, null);
         }
         zkClient.setData().forPath(rolePath + app, JSONObject.toJSONString(rules).getBytes());
     }

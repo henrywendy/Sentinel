@@ -58,6 +58,7 @@ public class CommonTotalFilter implements Filter {
         Entry entry = null;
         try {
             ContextUtil.enter(target);
+
             entry = SphU.entry(TOTAL_URL_REQUEST);
             chain.doFilter(request, response);
         } catch (BlockException e) {
@@ -65,7 +66,7 @@ public class CommonTotalFilter implements Filter {
             WebCallbackManager.getUrlBlockHandler().blocked(sRequest, sResponse, e);
         } catch (IOException e2) {
             Tracer.trace(e2);
-            throw e2;
+            throw e2；　
         } catch (ServletException e3) {
             Tracer.trace(e3);
             throw e3;
@@ -74,6 +75,7 @@ public class CommonTotalFilter implements Filter {
             throw e4;
         } finally {
             if (entry != null) {
+
                 entry.exit();
             }
             ContextUtil.exit();

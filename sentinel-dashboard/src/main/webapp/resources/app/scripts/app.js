@@ -30,7 +30,7 @@ angular
       events: true,
     });
 
-    $urlRouterProvider.otherwise('/dashboard/home');
+    $urlRouterProvider.otherwise('/dashboard/flow');
 
     $stateProvider
       .state('dashboard', {

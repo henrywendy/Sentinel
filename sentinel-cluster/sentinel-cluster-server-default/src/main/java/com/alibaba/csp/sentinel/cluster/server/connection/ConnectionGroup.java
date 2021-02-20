@@ -58,8 +58,8 @@ public class ConnectionGroup {
         }
         connectionSet.add(new ConnectionDescriptor().setAddress(address).setHost(host));
         connectedCount.incrementAndGet();
-
         return this;
+
     }
 
     public ConnectionGroup removeConnection(String address) {

@@ -17,11 +17,6 @@ package com.taobao.csp.sentinel.dashboard.view;
 
 import java.util.Date;
 
-import com.alibaba.csp.sentinel.util.StringUtil;
-
-import com.taobao.csp.sentinel.dashboard.discovery.AppManagement;
-import com.taobao.csp.sentinel.dashboard.discovery.MachineDiscovery;
-import com.taobao.csp.sentinel.dashboard.discovery.MachineInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +24,11 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.alibaba.csp.sentinel.util.StringUtil;
+import com.taobao.csp.sentinel.dashboard.discovery.AppManagement;
+import com.taobao.csp.sentinel.dashboard.discovery.MachineDiscovery;
+import com.taobao.csp.sentinel.dashboard.discovery.MachineInfo;
 
 @Controller
 @RequestMapping(value = "/registry", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -66,6 +66,7 @@ public class MachineRegistryController {
             machineInfo.setTimestamp(new Date(timestamp));
             machineInfo.setVersion(sentinelVersion);
             appManagement.addMachine(machineInfo);
+
             return Result.ofSuccessMsg("success");
         } catch (Exception e) {
             logger.error("Receive heartbeat error", e);
